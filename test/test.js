@@ -72,10 +72,12 @@ describe("App basic tests", () => {
           //validate
           expect(res).to.have.status(201);
           expect(res.body.message).to.be.equal("User registered");
-
+          console.log(res.body.user);
           //new validations to confirm user is saved in database
           expect(res.body.user._id).to.exist;
           expect(res.body.user.createdAt).to.exist;
+          //validation to confirm password is encrypted
+          expect(res.body.user.password).to.not.be.eql(user_input.password);
 
           //done after all assertions pass
           done();

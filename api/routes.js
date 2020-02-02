@@ -10,6 +10,8 @@ const jwt = require("jsonwebtoken"); //database
 const mongoose = require("mongoose");
 //import User
 const User = require("./user");
+//to encrypt
+const bcrypt = require("bcrypt");
 
 // Register
 
@@ -41,34 +43,46 @@ router.post("/register", (req, res, next) => {
     });
   } else {
     //if all fields are present
-    //create the user with the model
-    const new_user = new User({
-      //assign request fields to the user attributes
-      _id: mongoose.Types.ObjectId(),
-      name: req.body.name,
-      email: req.body.email,
-      password: req.body.password
-    });
-    //save in the database
-    new_user
-      .save()
-      .then(saved_user => {
-        //return 201, message and user details
-        res.status(201).json({
-          message: "User registered",
-          user: saved_user,
-          errors: errors
+    //encrypt user password
+    bcrypt.hash(req.body.password, 10, (err, hashed_password) => {
+      if (err) {
+        //error hashing the password
+        errors.push({
+          hash: err.message
         });
-      })
-      .catch(err => {
-        //failed to save in database
-        errors.push(
-          new Error({
-            db: err.message
+        return res.status(500).json(errors);
+      } else {
+        //if password is hashed
+        //create the user with the model
+        const new_user = new User({
+          //assign request fields to the user attributes
+          _id: mongoose.Types.ObjectId(),
+          name: req.body.name,
+          email: req.body.email,
+          password: hashed_password
+        });
+        //save in the database
+        new_user
+          .save()
+          .then(saved_user => {
+            //return 201, message and user details
+            res.status(201).json({
+              message: "User registered",
+              user: saved_user,
+              errors: errors
+            });
           })
-        );
-        res.status(500).json(errors);
-      });
+          .catch(err => {
+            //failed to save in database
+            errors.push(
+              new Error({
+                db: err.message
+              })
+            );
+            res.status(500).json(errors);
+          });
+      }
+    });
   }
 });
 // LOGIN
