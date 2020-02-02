@@ -6,7 +6,12 @@
 const express = require("express");
 //create the express router that will have all endpoints
 const router = express.Router();
-const jwt = require("jsonwebtoken");
+const jwt = require("jsonwebtoken"); //database
+const mongoose = require("mongoose");
+//import User
+const User = require("./user");
+
+// Register
 
 router.post("/register", (req, res, next) => {
   let hasErrors = false;
@@ -30,18 +35,42 @@ router.post("/register", (req, res, next) => {
 
   if (hasErrors) {
     //if there is any missing field
-    res.status(422).json({
+    res.status(401).json({
       message: "Invalid input",
       errors: errors
     });
   } else {
-    res.status(201).json({
-      message: "User created!",
-      errors: errors
+    //if all fields are present
+    //create the user with the model
+    const new_user = new User({
+      //assign request fields to the user attributes
+      _id: mongoose.Types.ObjectId(),
+      name: req.body.name,
+      email: req.body.email,
+      password: req.body.password
     });
+    //save in the database
+    new_user
+      .save()
+      .then(saved_user => {
+        //return 201, message and user details
+        res.status(201).json({
+          message: "User registered",
+          user: saved_user,
+          errors: errors
+        });
+      })
+      .catch(err => {
+        //failed to save in database
+        errors.push(
+          new Error({
+            db: err.message
+          })
+        );
+        res.status(500).json(errors);
+      });
   }
 });
-
 // LOGIN
 
 router.post("/login", (req, res, next) => {
