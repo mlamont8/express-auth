@@ -109,30 +109,65 @@ router.post("/login", (req, res, next) => {
     });
   } else {
     //check if credentials are valid
-    if (req.body.email == "john@wick.com" && req.body.password == "secret") {
-      //generate JWT token. jwt.sing() receives payload, key and opts.
-      const token = jwt.sign(
-        {
-          email: req.body.email
-        },
-        process.env.JWT_KEY,
-        {
-          expiresIn: "1h"
-        }
-      );
-      //validation OK
-      res.status(200).json({
-        message: "Auth OK",
-        token: token,
-        errors: errors
-      });
-    } else {
-      //return 401 and message KO
-      res.status(401).json({
-        message: "Auth error"
-      });
-    }
+    //try to find user in database by email
+    User.findOne({ email: req.body.email }).then((found_user, err) => {
+      if (!found_user) {
+        //return error, user is not registered
+        res.status(401).json({
+          message: "Auth error, email not found"
+        });
+      } else {
+        //validate password
+        bcrypt.compare(
+          req.body.password,
+          found_user.password,
+          (err, isValid) => {
+            if (err) {
+              //if compare method fails, return error
+              res.status(500).json({
+                message: err.message
+              });
+            }
+            if (!isValid) {
+              //return error, incorrect password
+              res.status(401).json({
+                message: "Auth error"
+              });
+            } else {
+              //generate JWT token. jwt.sing() receives payload, key and opts.
+              const token = jwt.sign(
+                {
+                  email: req.body.email
+                },
+                process.env.JWT_KEY,
+                {
+                  expiresIn: "1h"
+                }
+              );
+              //validation OK
+              res.status(200).json({
+                message: "Auth OK",
+                token: token,
+                errors: errors
+              });
+            }
+          }
+        );
+      }
+    });
   }
+});
+
+// Protected login
+//import check-auth middleware
+const checkAuth = require("./middleware/check-auth");
+
+router.get("/protected", checkAuth, (req, res, next) => {
+  res.status(200).json({
+    message: "Welcome, your email is " + req.userData.email,
+    user: req.userData,
+    errors: []
+  });
 });
 
 module.exports = router;
